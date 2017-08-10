@@ -15,8 +15,7 @@ export default class ClientManager {
             this.rooms.push(newRoom)
 
             return {isRoomFilled: constants.ROOM_NOT_FILLED, roomID: newRoom.id}
-        }
-        else {
+        } else {
             return this.getFirstAvailableRoom(socket)
         }
     }
@@ -48,7 +47,8 @@ export default class ClientManager {
         return {
             id: (Math.floor(Math.random() * 100) + 1),
             maxClients: 2,
-            clients: []
+            clients: [],
+            board: [1,2,3,4,5,6,7,8,9]
         }
     }
 
@@ -88,15 +88,18 @@ export default class ClientManager {
         socket.write(JSON.stringify(msgObj) + '\0')
     }
 
+    getRoomByID(roomID){
+        return this.rooms.find(room => room.id == roomID)
+    }
+
+    getClientsFromRoom(roomID) {
+        return this.getRoomByID(roomID).clients
+    }
+
     writeToClientsInRoom(roomID, msgObj) {
         this.getClientsFromRoom(roomID).forEach(client => {
             this.writeToClient(client, msgObj)
         });
-    }
-
-    getClientsFromRoom(roomID) {
-        let matchedRoom = this.rooms.find(room => room.id == roomID)
-        return matchedRoom.clients
     }
 
     getClientByPlayerSign(roomID, playerSign) {

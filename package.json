@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start-server": "node index.js",
-    "start-client": "node index-client.js",
+    "start-client": "node index-client.js"
   },
   "author": "",
   "license": "ISC",

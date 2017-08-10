@@ -11,7 +11,7 @@ client.connect(config.socketPort, config.socketHost, () => {
 
 
 let buffer = [];
-const processChunk = data => {
+let processChunk = data => {
 
     if (data.indexOf('\0') >= 0) {
         const part = data.toString();
@@ -25,7 +25,7 @@ const processChunk = data => {
         }
     } else {
         buffer.push(data.toString());
-    }    
+    }
 }
 
 const handleMessage = message => {
@@ -43,11 +43,28 @@ const handlePrompt = roomID => {
         output: process.stdout
     });
 
-    rl.question('It\'s your turn, please Make your move', move => {
-        let response = {type:constants.MOVE_MADE, moveMade: move, roomID: roomID}
-        client.write(JSON.stringify(response))
-        rl.close();
+    rl.question('It\'s your turn, please Make your move\n' , move => {
+        if(isMoveValid(move)) {
+            let response = {type:constants.MOVE_MADE, move: move, roomID: roomID}
+            client.write(JSON.stringify(response))
+            rl.close();
+        } else {
+            rl.close();
+            handlePrompt(roomID)
+        }
     });
+}
+
+const isMoveValid = move => {
+    if(isNaN(move)) {
+        console.log('please enter a valid number.\n')
+        return false
+    } else if(move > 9) {
+        console.log('Please enter a number within range [0-9].\n')
+        return false
+    } else {
+        return true
+    }
 }
 
 client.on('data', processChunk);
