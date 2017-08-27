@@ -1,48 +1,19 @@
 import net from 'net'
 import fs from 'fs'
 import config from '../config'
-import ClientManager from './client-manager'
-import gameManager from './game-manager'
+import clientManager from './client-manager'
+import GameManager from './game-manager'
 import constants from '../constants'
-
-gameManager.winningCombinations = [0];
-
-const clientManager = new ClientManager()
+import ClientUtils from './client-utils'
 
 // const unixServer = net.createServer()
 const TCPServer = net.createServer()
+const ClientManager = new clientManager()
 
-TCPServer.on('connection', (client) => {
-    onConnection(client)
-})
 
-// unixServer.on('connection', (client) => {
-//     onConnection(client)
-// })
-
-TCPServer.on('error', e => {
-    onError(e)
-})
-
-// unixServer.on('error', e => {
-//     onError(e)
-// })
-
-// unixServer.listen(config.socketPath, () => {
-//     console.log('listening on ', unixServer.address())
-// })
-
-TCPServer.listen(config.socketPort, config.socketHost, () => {
-    console.log('listening on '+ TCPServer.address().address + ':' + TCPServer.address().port)
-})
-
-/**
- * 
- * @param {net.Socket} client 
- */
 const onConnection = client => {
     client.id = (Math.floor(Math.random() * 100) + 1)
-    let roomData = clientManager.addToRoom(client)
+    let roomData = ClientManager.addToRoom(client)
 
     if(roomData.isRoomFilled === constants.ROOM_FILLED) {
         startGame(roomData.roomID)
@@ -51,7 +22,7 @@ const onConnection = client => {
     client.on('data', data => {
         let dataObj = JSON.parse(data)
         if(dataObj.type == constants.MOVE_MADE) {
-            gameManager.makeMove(getBoard(dataObj.roomID), dataObj.move, client.playerSign)
+            GameManager.makeMove(getBoard(dataObj.roomID), dataObj.move, client.playerSign)
             play(dataObj.roomID, client.playerSign)
         } else {
             console.log( dataObj.toString())
@@ -60,49 +31,64 @@ const onConnection = client => {
     })
 
     client.on('end', data => {
-        clientManager.removeFromRoom(client)
+        ClientManager.removeFromRoom(client)
     })
 }
 
 const startGame = roomID => {
-    let msgObj = {type: constants.MESSAGE, message: gameManager.displayBoard(getBoard(roomID))}
-    clientManager.writeToClientsInRoom(roomID, msgObj)
-    requestMove(roomID, clientManager.getClientByPlayerSign(roomID, 'X'))
-}
+    let msgObj = {type: constants.MESSAGE, message: GameManager.displayBoard(getBoard(roomID))}
+    let clients = ClientManager.getClientsFromRoom(roomID)
 
-const requestMove = (roomID, client) => {
-    let msgObj = {type: constants.MAKE_MOVE, roomID: roomID}
-    clientManager.writeToClient(client, msgObj)
+    ClientUtils.writeToClientsInRoom(clients, msgObj)
+    GameManager.requestMove(roomID, ClientManager.getClientByPlayerSign(roomID, 'X'))
 }
 
 const getBoard = roomID => {
-    return clientManager.getRoomByID(roomID).board
+    return ClientManager.getRoomByID(roomID).board
 }
 
 const play = (roomID, currentPlayer) => {
-    let msgObj = {type: constants.MESSAGE, message: gameManager.displayBoard(getBoard(roomID))}
-    clientManager.writeToClientsInRoom(roomID, msgObj)
+    let msgObj = {type: constants.MESSAGE, message: GameManager.displayBoard(getBoard(roomID))}
+    let clients = ClientManager.getClientsFromRoom(roomID)
 
-    if (gameManager.checkWinner(getBoard(roomID), currentPlayer) === true) {
+    ClientUtils.writeToClients(clients, msgObj)
+
+    if (GameManager.checkWinner(getBoard(roomID), currentPlayer) === true) {
         let msgObj = {type: constants.MESSAGE, message: 'Player '+currentPlayer+ ' won!!'}
-        clientManager.writeToClientsInRoom(roomID, msgObj)
+        ClientUtils.writeToClientsInRoom(clients, msgObj)
         return;
     }
-    if (gameManager.checkTie(getBoard(roomID)) === true) {
+    if (GameManager.checkTie(getBoard(roomID)) === true) {
         let msgObj = {type: constants.MESSAGE, message: 'It\'s a tie'}
-        clientManager.writeToClientsInRoom(roomID, msgObj)
+        ClientUtils.writeToClientsInRoom(clients, msgObj)
         return;
     }
     if (currentPlayer == 'X') {
-        requestMove(roomID, clientManager.getClientByPlayerSign(roomID, 'O'))
+        GameManager.requestMove(roomID, ClientManager.getClientByPlayerSign(roomID, 'O'))
     } else {
-        requestMove(roomID, clientManager.getClientByPlayerSign(roomID, 'X'))
+        GameManager.requestMove(roomID, ClientManager.getClientByPlayerSign(roomID, 'X'))
     }
 }
 
 const onError = err => {
     console.log('An error occured. ERRCODE: ' + err.code)
 }
+
+TCPServer.on('connection', onConnection)
+
+// unixServer.on('connection', onConnection)
+
+TCPServer.on('error', onError)
+
+TCPServer.listen(config.socketPort, config.socketHost, () => {
+    console.log('listening on '+ TCPServer.address().address + ':' + TCPServer.address().port)
+})
+
+// unixServer.on('error', onnError)
+
+// unixServer.listen(config.socketPath, () => {
+//     console.log('listening on ', unixServer.address())
+// })
 
 // process.on('SIGINT', () => {
 //     unixServer.close(() => {

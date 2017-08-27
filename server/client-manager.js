@@ -1,4 +1,5 @@
 import constants from '../constants'
+import ClientUtils from './client-utils'
 
 export default class ClientManager {
     constructor() {
@@ -9,7 +10,9 @@ export default class ClientManager {
         if(this.rooms.length == 0) {
             socket.playerSign = 'X'
             let msgObj = {type: constants.MESSAGE, message: 'Your sign is X'}
-            this.writeToClient(socket, msgObj)
+            ClientUtils.writeToClient(socket, msgObj)
+            
+            
             let newRoom = this.createRoom()
             newRoom.clients.push(socket)
             this.rooms.push(newRoom)
@@ -22,25 +25,20 @@ export default class ClientManager {
 
     removeFromRoom(socket) {
         for(let i = 0; i < this.rooms.length; ++i) {
-            for(let j = 0; j < this.rooms[i].clients.length; ++j) {
-                if(socket.id == this.rooms[i].clients[j].id) {
-                    let matchedClientsArray = this.rooms[i].clients
-                    matchedClientsArray.splice(matchedClientsArray.indexOf(socket), 1)
-                    if (matchedClientsArray.length == 0 ) {
-                        this.destroyRoom(this.rooms[i].id)
-                        console.log(this.rooms)
-                    }
-                    break
+            let clientToBeRemoved = this.rooms[i].clients.find(client => client.id == socket.id)
+            if(!!clientToBeRemoved) {
+                let currentRoom = this.rooms[i]
+                currentRoom.clients.splice(currentRoom.clients.indexOf(clientToBeRemoved), 1)
+                if(currentRoom.clients.length == 0) {
+                    this.destroyRoom(this.rooms[i].id)
                 }
+                break
             }
         }
     }
 
     destroyRoom(roomId) {
         this.rooms.splice(this.rooms.findIndex(item => roomId === item.id), 1)
-        this.rooms.forEach((room, i) => {
-            if(roomId == room.id) this.rooms.splice(i, 1)
-        })
     }
 
     createRoom() {
@@ -69,23 +67,19 @@ export default class ClientManager {
             }
 
             availableRoom.clients.push(socket)
-            this.writeToClient(socket, msgObj)
+            ClientUtils.writeToClient(socket, msgObj)
 
             return {isRoomFilled: constants.ROOM_FILLED, roomID: availableRoom.id}
         } else {
             let newRoom = this.createRoom()
             socket.playerSign = 'X'
             let msgObj = {type: constants.MESSAGE, message: 'Your sign is X'}
-            this.writeToClient(socket, msgObj)
+            ClientUtils.writeToClient(socket, msgObj)
             newRoom.clients.push(socket)
             this.rooms.push(newRoom)
 
             return {isRoomFilled: constants.ROOM_NOT_FILLED, roomID: newRoom.id}
         }
-    }
-
-    writeToClient(socket, msgObj) {
-        socket.write(JSON.stringify(msgObj) + '\0')
     }
 
     getRoomByID(roomID){
@@ -94,12 +88,6 @@ export default class ClientManager {
 
     getClientsFromRoom(roomID) {
         return this.getRoomByID(roomID).clients
-    }
-
-    writeToClientsInRoom(roomID, msgObj) {
-        this.getClientsFromRoom(roomID).forEach(client => {
-            this.writeToClient(client, msgObj)
-        });
     }
 
     getClientByPlayerSign(roomID, playerSign) {

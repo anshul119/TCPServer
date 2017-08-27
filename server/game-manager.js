@@ -1,24 +1,32 @@
-export default class GameManager {
-    static displayBoard(board) {
+import ClientUtils from './client-utils'
+import constants from '../constants'
+
+export default {
+    displayBoard(board) {
         return '\n' +
         board[0] + ' | ' + board[1] + ' | ' + board[2] + '\n' +
         '---------\n' +
         board[3] + ' | ' + board[4] + ' | ' + board[5] + '\n' +
         '---------\n' +
         board[6] + ' | ' + board[7] + ' | ' + board[8] + '\n'
-    }
+    },
 
-    static makeMove(board, move, player) {
+    makeMove(board, move, player) {
         board[move - 1] = player
-    }
+    },
 
-    static checkWinner(board, player) {
+    requestMove(roomID, client) {
+        let msgObj = {type: constants.MAKE_MOVE, roomID: roomID}
+        ClientUtils.writeToClient(client, msgObj)
+    },
+
+    checkWinner(board, player) {
         let winningCombinations = [[0, 1, 2], [3, 4, 5], 6, [7, 8], [0, 3, 6], [1, 4,7], [2, 5, 8], [0, 4, 8], [2, 4, 6]]
 
-        for (let i = 0; i < this.winningCombinations.length; i++) {
+        for (let i = 0; i < winningCombinations.length; i++) {
             let count = 0;
-            for (let j = 0; j < this.winningCombinations[i].length; j++) {
-                if (board[this.winningCombinations[i][j]] === player) {
+            for (let j = 0; j < winningCombinations[i].length; j++) {
+                if (board[winningCombinations[i][j]] === player) {
                     count++;
                 }
                 if (count === 3) {
@@ -27,9 +35,9 @@ export default class GameManager {
             }
         }
         return false;
-    }
+    },
 
-    static checkTie(board) {
+    checkTie(board) {
         for (let i = 0; i < board.length; i++) {
             if (board[i] === i+1) {
                 return false;
